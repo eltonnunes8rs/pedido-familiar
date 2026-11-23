@@ -1,7 +1,7 @@
 /* Service worker mínimo: guarda só a "casca" (página e ícones) e SEMPRE busca a página nova.
    Cardápio e pedido nunca vêm de cache (são chamadas ao n8n em outro endereço). */
-var CACHE = "pedidos-familiar-casca-1";
-var CASCA = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
+var CACHE = "pedidos-familiar-casca-2";
+var CASCA = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png"];
 self.addEventListener("install", function (e) {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(CASCA); }).catch(function () {}));
