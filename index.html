@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pedidos Familiar</title>
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#1f6f43">
+<meta name="theme-color" content="#7a1f3d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Pedidos">
@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="icon-192.png">
 <style>
-  :root{--c:#1f6f43;--cl:#e6f2ea}
+  :root{--c:#7a1f3d;--cl:#f6e6eb}
   *{box-sizing:border-box}
   body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f4f4;color:#222}
   #app{max-width:480px;margin:0 auto;min-height:100vh;background:#fff;padding-bottom:130px}
@@ -28,13 +28,15 @@
   .btn{display:block;width:100%;padding:15px;border:0;border-radius:10px;background:var(--c);color:#fff;font-size:17px;margin:10px 0;cursor:pointer;text-align:center;text-decoration:none}
   .btn.sec{background:#fff;color:var(--c);border:2px solid var(--c)}
   .btn:disabled{background:#bbb}
-  .rest{display:block;width:100%;border:0;border-radius:14px;padding:22px 16px;margin:12px 0;color:#fff;font-size:20px;font-weight:bold;text-align:left;cursor:pointer}
+  .rest{display:flex;align-items:center;gap:14px;width:100%;border:0;border-radius:14px;padding:14px 16px;margin:12px 0;color:#fff;font-size:20px;font-weight:bold;text-align:left;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+  .rest img{width:84px;height:84px;border-radius:50%;flex:0 0 auto;background:#000}
+  .rest span{flex:1}
   .rest small{display:block;font-weight:normal;font-size:13px;opacity:.95;margin-top:4px}
   .tabs{display:flex;overflow-x:auto;border-bottom:1px solid #ddd;background:#fff;position:sticky;top:0}
   .tabs button{flex:0 0 auto;padding:13px 16px;border:0;background:none;font-size:15px;color:#666;border-bottom:3px solid transparent}
   .tabs button.on{color:var(--c);border-color:var(--c);font-weight:bold}
   .item{display:flex;justify-content:space-between;gap:10px;padding:15px 16px;border-bottom:1px solid #eee;cursor:pointer}
-  .item .p{color:#0a7a3d;font-weight:bold;white-space:nowrap}
+  .item .p{color:var(--c);font-weight:bold;white-space:nowrap}
   .item .p.ac{color:#b36b00;font-size:13px;white-space:normal;text-align:right}
   nav{position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:var(--c);display:flex}
   nav button{flex:1;padding:12px 4px;border:0;background:none;color:#fff;font-size:13px;opacity:.8}
@@ -50,12 +52,12 @@
   .linha{display:flex;justify-content:space-between;padding:6px 0;gap:10px}
   .tot{font-weight:bold;font-size:18px;border-top:2px solid #222;margin-top:8px;padding-top:10px}
   .chip{display:inline-block;padding:5px 11px;border-radius:14px;background:#e8f1ff;color:#0b4ea2;font-size:13px;margin:2px 4px 2px 0;cursor:pointer}
-  .chip.ok{background:#dff5e6;color:#0a7a3d}
+  .chip.ok{background:var(--cl);color:var(--c)}
   .box{border:1px solid #ddd;border-radius:10px;padding:12px;margin:10px 0}
   .peq{font-size:12px;color:#777}
   .rm{color:var(--c);background:none;border:0;font-size:13px;padding:0;cursor:pointer}
   .logo{width:38px;height:38px;border-radius:50%;margin-right:10px;vertical-align:middle;background:#fff}
-  .barra{position:fixed;left:0;right:0;bottom:44px;max-width:480px;margin:0 auto;background:#f0a030;color:#222;display:flex;justify-content:space-between;align-items:center;padding:14px 18px;font-size:16px;cursor:pointer;z-index:4;box-shadow:0 -2px 8px rgba(0,0,0,.25)}
+  .barra{position:fixed;left:0;right:0;bottom:44px;max-width:480px;margin:0 auto;background:var(--c);color:#fff;display:flex;justify-content:space-between;align-items:center;padding:14px 18px;font-size:16px;cursor:pointer;z-index:4;box-shadow:0 -2px 8px rgba(0,0,0,.25)}
   .barra b{font-size:18px}
   .barra small{display:block;font-size:11px;opacity:.9}
 </style>
@@ -65,11 +67,11 @@
 <nav id="nav"></nav>
 <script>
 /* ===== Configuração ===== */
-var VERSAO="2026-11-23.1";   // MUDAR a cada publicação: é isso que faz o app instalado avisar
+var VERSAO="2026-11-23.2";   // MUDAR a cada publicação: é isso que faz o app instalado avisar
 var BASE="https://boldsquid-n8n.cloudfy.live/webhook/app-pedidos/";
 var REST={
-  familiar:{nome:"Restaurante Familiar",curto:"Familiar",cor:"#1f6f43",claro:"#e6f2ea",desc:"Almoço: marmitas e comida por quilo",zap:"554699877721"},
-  esquinao:{nome:"Esquinão Lanchonete",curto:"Esquinão",cor:"#b23a1e",claro:"#fbe9e3",desc:"Lanches, porções, pastéis e bebidas",zap:"554699044193"}
+  familiar:{nome:"Restaurante Familiar",curto:"Familiar",cor:"#7a1f3d",claro:"#f6e6eb",logo:"logo-familiar.png",desc:"Almoço: marmitas e comida por quilo",zap:"554699877721"},
+  esquinao:{nome:"Esquinão Lanchonete",curto:"Esquinão",cor:"#a87a00",claro:"#fbf3d6",logo:"logo-esquinao.png",desc:"Lanches, porções, pastéis e bebidas",zap:"554699044193"}
 };
 var NOMES_CAT={TAMANHO:"Marmitas",BEBIDA:"Bebidas",HAMBURGUER:"Hambúrguer",HAMBURGUER_GOURMET:"Hambúrguer gourmet",LANCHE:"Lanches",PASTEL:"Pastéis",PORCAO:"Porções",SALGADO:"Salgados",ADICIONAL_LANCHE:"Adicionais",PRATO_EXECUTIVO:"Pratos",PARMEGIANA:"Parmegiana",KIDS:"Kids",PIZZA:"Pizzas"};
 function nomeCat(c){return NOMES_CAT[c]||(c.charAt(0)+c.slice(1).toLowerCase().replace(/_/g," "))}
@@ -184,7 +186,7 @@ function ir(v){
 /* ===== Telas ===== */
 function vEscolha(){
   var h='<header><span>Pedidos</span><small>Familiar e Esquinão</small></header><div class="pad"><h2>De qual restaurante você quer pedir?</h2>';
-  Object.keys(REST).forEach(function(k){var r=REST[k];h+='<button class="rest" style="background:'+r.cor+'" onclick="escolher(\''+k+'\')">'+esc(r.nome)+'<small>'+esc(r.desc)+'</small></button>'});
+  Object.keys(REST).forEach(function(k){var r=REST[k];h+='<button class="rest" style="background:'+r.cor+'" onclick="escolher(\''+k+'\')"><img src="'+r.logo+'" alt=""><span>'+esc(r.nome)+'<small>'+esc(r.desc)+'</small></span></button>'});
   h+='<div class="peq">Você entra uma vez só, com o seu WhatsApp, e vale para os dois.</div>'+vInstalar()+'<div class="peq" style="text-align:center;margin-top:18px">versão '+VERSAO+'</div></div>';
   return h;
 }
