@@ -1,4 +1,476 @@
-<!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Restaurante Familiar</title>
-<style>body{font-family:sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0;background:#fafafa;color:#333}</style></head>
-<body><h1>Em breve</h1></body></html>
+<!DOCTYPE html>
+<!-- Versão 23/11/2026 — App de pedidos Restaurante Familiar + Esquinão Lanchonete (tela de escolha, login único por código no WhatsApp, pedido, Meus pedidos, endereços e métricas ligados ao banco). ?fechado=1 simula fechado; ?falha=1 mostra a tela de falha; ?r=esquinao abre direto num restaurante. -->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pedidos Familiar</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1f6f43">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pedidos">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root{--c:#1f6f43;--cl:#e6f2ea}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f4f4f4;color:#222}
+  #app{max-width:480px;margin:0 auto;min-height:100vh;background:#fff;padding-bottom:130px}
+  header{background:var(--c);color:#fff;padding:14px 16px;font-size:18px;font-weight:bold;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  header small{font-weight:normal;font-size:12px;opacity:.9;text-align:right}
+  header button{background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:8px;padding:6px 10px;font-size:12px}
+  .logado{background:var(--cl);color:var(--c);padding:7px 14px;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+  .aviso{background:#fff3cd;color:#664d03;padding:8px 14px;font-size:12px}
+  .pad{padding:16px}
+  h2{margin:0 0 10px;font-size:18px}
+  .btn{display:block;width:100%;padding:15px;border:0;border-radius:10px;background:var(--c);color:#fff;font-size:17px;margin:10px 0;cursor:pointer;text-align:center;text-decoration:none}
+  .btn.sec{background:#fff;color:var(--c);border:2px solid var(--c)}
+  .btn:disabled{background:#bbb}
+  .rest{display:block;width:100%;border:0;border-radius:14px;padding:22px 16px;margin:12px 0;color:#fff;font-size:20px;font-weight:bold;text-align:left;cursor:pointer}
+  .rest small{display:block;font-weight:normal;font-size:13px;opacity:.95;margin-top:4px}
+  .tabs{display:flex;overflow-x:auto;border-bottom:1px solid #ddd;background:#fff;position:sticky;top:0}
+  .tabs button{flex:0 0 auto;padding:13px 16px;border:0;background:none;font-size:15px;color:#666;border-bottom:3px solid transparent}
+  .tabs button.on{color:var(--c);border-color:var(--c);font-weight:bold}
+  .item{display:flex;justify-content:space-between;gap:10px;padding:15px 16px;border-bottom:1px solid #eee;cursor:pointer}
+  .item .p{color:#0a7a3d;font-weight:bold;white-space:nowrap}
+  .item .p.ac{color:#b36b00;font-size:13px;white-space:normal;text-align:right}
+  nav{position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:var(--c);display:flex}
+  nav button{flex:1;padding:12px 4px;border:0;background:none;color:#fff;font-size:13px;opacity:.8}
+  nav button.on{opacity:1;font-weight:bold;background:rgba(255,255,255,.15)}
+  .sheetbg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:5}
+  .sheet{background:#fff;width:100%;max-width:480px;max-height:90vh;overflow:auto;border-radius:16px 16px 0 0;padding:18px}
+  .qty{display:flex;align-items:center;gap:18px;margin:10px 0}
+  .qty button{width:44px;height:44px;border-radius:50%;border:2px solid var(--c);background:#fff;color:var(--c);font-size:24px}
+  .qty span{font-size:20px;min-width:24px;text-align:center}
+  textarea,input,select{width:100%;padding:12px;border:1px solid #bbb;border-radius:8px;font-size:15px;margin:6px 0;font-family:inherit}
+  label.ck{display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px solid #f0f0f0;font-size:16px}
+  label.ck input{width:22px;height:22px;margin:0}
+  .linha{display:flex;justify-content:space-between;padding:6px 0;gap:10px}
+  .tot{font-weight:bold;font-size:18px;border-top:2px solid #222;margin-top:8px;padding-top:10px}
+  .chip{display:inline-block;padding:5px 11px;border-radius:14px;background:#e8f1ff;color:#0b4ea2;font-size:13px;margin:2px 4px 2px 0;cursor:pointer}
+  .chip.ok{background:#dff5e6;color:#0a7a3d}
+  .box{border:1px solid #ddd;border-radius:10px;padding:12px;margin:10px 0}
+  .peq{font-size:12px;color:#777}
+  .rm{color:var(--c);background:none;border:0;font-size:13px;padding:0;cursor:pointer}
+  .logo{width:38px;height:38px;border-radius:50%;margin-right:10px;vertical-align:middle;background:#fff}
+  .barra{position:fixed;left:0;right:0;bottom:44px;max-width:480px;margin:0 auto;background:#f0a030;color:#222;display:flex;justify-content:space-between;align-items:center;padding:14px 18px;font-size:16px;cursor:pointer;z-index:4;box-shadow:0 -2px 8px rgba(0,0,0,.25)}
+  .barra b{font-size:18px}
+  .barra small{display:block;font-size:11px;opacity:.9}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<nav id="nav"></nav>
+<script>
+/* ===== Configuração ===== */
+var VERSAO="2026-11-23.1";   // MUDAR a cada publicação: é isso que faz o app instalado avisar
+var BASE="https://boldsquid-n8n.cloudfy.live/webhook/app-pedidos/";
+var REST={
+  familiar:{nome:"Restaurante Familiar",curto:"Familiar",cor:"#1f6f43",claro:"#e6f2ea",desc:"Almoço: marmitas e comida por quilo",zap:"554699877721"},
+  esquinao:{nome:"Esquinão Lanchonete",curto:"Esquinão",cor:"#b23a1e",claro:"#fbe9e3",desc:"Lanches, porções, pastéis e bebidas",zap:"554699044193"}
+};
+var NOMES_CAT={TAMANHO:"Marmitas",BEBIDA:"Bebidas",HAMBURGUER:"Hambúrguer",HAMBURGUER_GOURMET:"Hambúrguer gourmet",LANCHE:"Lanches",PASTEL:"Pastéis",PORCAO:"Porções",SALGADO:"Salgados",ADICIONAL_LANCHE:"Adicionais",PRATO_EXECUTIVO:"Pratos",PARMEGIANA:"Parmegiana",KIDS:"Kids",PIZZA:"Pizzas"};
+function nomeCat(c){return NOMES_CAT[c]||(c.charAt(0)+c.slice(1).toLowerCase().replace(/_/g," "))}
+
+/* ===== Estado e armazenamento (tudo protegido: se o navegador bloquear, o app continua) ===== */
+function lsGet(k,d){try{var v=localStorage.getItem(k);return v==null?d:v}catch(e){return d}}
+function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+function lsDel(k){try{localStorage.removeItem(k)}catch(e){}}
+var TOK={};try{TOK=JSON.parse(lsGet("pf_tok","{}"))||{}}catch(e){TOK={}}
+var S={slug:null,view:"escolha",modo:null,grupo:null,cart:[],sheet:null,
+  end:{apelido:"",local:"",rua:"",num:"",comp:""},pag:"Pix",troco:"",talh:0,
+  nome:lsGet("pf_nome",""),telDig:lsGet("pf_tel",""),nomeDig:"",codigoDig:"",loginPasso:"tel",msg:"",volta:"checkout",
+  enviando:false,chave:null,meus:null,meusCarregando:false,enderecos:[],convenio:false,ultimo:null,zapBtn:false};
+var CARD=null,STATUS="escolha";   // escolha | carregando | ok | falha | desligado
+var HORA=null,AGORA0=0,T0=0,ABERTO=true,ENTREGA_OK=true,PRECO_TALHER=1;
+function token(){return S.slug?(TOK[S.slug]||""):""}
+function setToken(slug,t){TOK[slug]=t;lsSet("pf_tok",JSON.stringify(TOK))}
+function post(p,b){return fetch(BASE+p,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)}).then(function(r){return r.json()})}
+function devId(){var d=lsGet("pf_dev","");if(!d){d=Math.random().toString(36).slice(2,10)+Date.now().toString(36);lsSet("pf_dev",d)}return d}
+function track(ev,dados){try{if(/[?&](fechado|falha)/.test(location.search))return;fetch(BASE+"evento",{method:"POST",keepalive:true,headers:{"Content-Type":"application/json"},body:JSON.stringify({slug:S.slug||"",token:token(),dev:devId(),evento:ev,dados:dados||{}})}).catch(function(){})}catch(e){}}
+function hojeTxt(){var d=new Date();return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate()}
+function salvar(){if(!S.slug)return;lsSet("pf_c_"+S.slug,JSON.stringify({dia:hojeTxt(),cart:S.cart,modo:S.modo,end:S.end,pag:S.pag,troco:S.troco,talh:S.talh}))}
+function carregaCarrinho(){
+  try{var C=JSON.parse(lsGet("pf_c_"+S.slug,"null"));
+    if(C&&C.dia===hojeTxt()){S.cart=C.cart||[];S.modo=C.modo||null;S.end=C.end||S.end;S.pag=C.pag||"Pix";S.troco=C.troco||"";S.talh=C.talh||0}
+    else{S.cart=[];S.modo=null;S.talh=0}}catch(e){S.cart=[]}
+}
+
+/* ===== Util ===== */
+function $(s){return document.querySelector(s)}
+function brl(v){return Number(v).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function js(s){return String(s).replace(/\\/g,"\\\\").replace(/'/g,"\\'")}
+function minTxt(t){var p=String(t||"").split(":");return Number(p[0])*60+Number(p[1]||0)}
+function agoraTxt(){var m=(AGORA0+Math.floor((Date.now()-T0)/60000))%1440;return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0")}
+function telFmt(t){var d=String(t||"").replace(/\D/g,"");if(d.length>=12&&d.indexOf("55")===0)d=d.slice(2);if(d.length===11)return"("+d.slice(0,2)+") "+d.slice(2,7)+"-"+d.slice(7);if(d.length===10)return"("+d.slice(0,2)+") "+d.slice(2,6)+"-"+d.slice(6);return String(t||"")}
+function tema(){var r=REST[S.slug]||REST.familiar;document.documentElement.style.setProperty("--c",r.cor);document.documentElement.style.setProperty("--cl",r.claro);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",r.cor)}
+function recalc(){
+  if(!HORA)return;
+  if(/[?&]fechado/.test(location.search)){ABERTO=false;return}
+  var a=agoraTxt();
+  ABERTO=CARD.dia_aberto!==false&&a>=HORA.abre&&a<HORA.fecha;
+  ENTREGA_OK=!HORA.entrega||a<HORA.entrega;
+  if(!ENTREGA_OK&&S.modo==="Entrega")S.modo="Retirada";
+}
+function gruposVisiveis(){var g=(CARD&&CARD.grupos)||[];return g}
+function grupoPorCat(c){var a=gruposVisiveis().filter(function(x){return x.categoria===c});return a[0]}
+function itemPor(chave){var r=null;gruposVisiveis().forEach(function(g){g.itens.forEach(function(i){if(i.chave===chave)r=i})});return r}
+function valTalh(){return (S.talh||0)*PRECO_TALHER}
+function locais(){return(CARD&&CARD.locais)||[]}
+function localSel(){return locais().filter(function(l){return String(l.id)===String(S.end.local)})[0]}
+function combinar(){return S.modo==="Entrega"&&S.end.local==="combinar"}
+function taxaAtual(){if(S.modo!=="Entrega"||combinar())return 0;var l=localSel();return l?Number(l.taxa):0}
+function totais(){var sub=0,pend=false;S.cart.forEach(function(l){if(l.quilo)pend=true;else sub+=l.preco*l.qtd});sub+=valTalh();var t=taxaAtual();return{sub:sub,taxa:t,total:sub+t,pend:pend}}
+
+/* ===== Versão / instalar ===== */
+var NOVA=false;
+function confereVersao(){
+  if(location.protocol!=="https:")return;
+  fetch("index.html?v="+Date.now(),{cache:"no-store"}).then(function(r){return r.text()}).then(function(t){
+    var m=t.match(/var VERSAO="([^"]+)"/);
+    if(m&&m[1]!==VERSAO&&!NOVA){NOVA=true;render()}
+  }).catch(function(){});
+}
+function atualizaApp(){
+  var fim=function(){location.reload()};
+  if(window.caches&&caches.keys)caches.keys().then(function(ks){return Promise.all(ks.map(function(k){return caches.delete(k)}))}).then(fim,fim);else fim();
+}
+document.addEventListener("visibilitychange",function(){if(!document.hidden)confereVersao()});
+setTimeout(confereVersao,4000);
+var INST=null;
+var JA_APP=(window.matchMedia&&matchMedia("(display-mode: standalone)").matches)||navigator.standalone===true;
+var IOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+var INST_FECHADO=lsGet("pf_inst_fechado","")==="1";
+window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();INST=e;if(S.view==="escolha"||S.view==="home")render()});
+window.addEventListener("appinstalled",function(){INST=null;JA_APP=true;track("app_instalado",{});render()});
+function instalar(){if(!INST)return;track("clicou_instalar",{});INST.prompt();INST.userChoice.then(function(r){track("instalar_resposta",{r:r.outcome});INST=null;render()}).catch(function(){})}
+function fechaInst(){INST_FECHADO=true;lsSet("pf_inst_fechado","1");render()}
+function vInstalar(){
+  if(JA_APP||INST_FECHADO)return"";
+  if(INST)return'<div class="box"><b>📲 Instale o app</b><div class="peq">Fica na tela do seu celular, sem precisar procurar o link.</div><button class="btn" onclick="instalar()">Instalar o app</button><button class="rm" onclick="fechaInst()">Agora não</button></div>';
+  if(IOS)return'<div class="box"><b>📲 Instale o app</b><div class="peq">No iPhone: toque em <b>Compartilhar</b> (o quadradinho com a seta) e depois em <b>Adicionar à Tela de Início</b>.</div><button class="rm" onclick="fechaInst()">Entendi</button></div>';
+  return"";
+}
+
+/* ===== Escolha do restaurante e cardápio ===== */
+function escolher(slug){
+  S.slug=slug;S.view="home";S.sheet=null;S.meus=null;CARD=null;HORA=null;
+  carregaCarrinho();lsSet("pf_ultimo",slug);tema();
+  STATUS=/[?&]falha/.test(location.search)?"falha":"carregando";render();
+  if(STATUS==="falha"){track("falha_cardapio");return}
+  var meu=slug;
+  fetch(BASE+"cardapio?slug="+encodeURIComponent(slug)).then(function(r){if(!r.ok)throw new Error(r.status);return r.json()}).then(function(d){
+    if(S.slug!==meu)return;
+    if(!d||d.ok!==true){STATUS="desligado";render();return}
+    CARD=d;
+    HORA={abre:d.horario_abre||"00:00",fecha:d.horario_fecha||"23:59",entrega:d.entrega_ate||""};
+    AGORA0=minTxt(String(d.agora||"").slice(11,16));T0=Date.now();
+    if(d.preco_talher!=null&&!isNaN(Number(d.preco_talher)))PRECO_TALHER=Number(d.preco_talher);
+    S.grupo=(abas()[0]||{}).id||null;
+    STATUS="ok";track("abriu",{aberto:true,logado:!!token()});render();
+  }).catch(function(e){console.log("API falhou",e);if(S.slug===meu){STATUS="falha";track("falha_cardapio");render()}});
+}
+function trocarRest(){S.slug=null;S.view="escolha";STATUS="escolha";tema();render();window.scrollTo(0,0)}
+function ir(v){
+  if(v==="checkout"&&S.view!=="checkout")track("fechar",{itens:S.cart.length});
+  S.view=v;
+  if(v==="pedidos")carregaMeus();
+  if(v==="checkout")carregaEnderecos();
+  render();window.scrollTo(0,0)}
+
+/* ===== Telas ===== */
+function vEscolha(){
+  var h='<header><span>Pedidos</span><small>Familiar e Esquinão</small></header><div class="pad"><h2>De qual restaurante você quer pedir?</h2>';
+  Object.keys(REST).forEach(function(k){var r=REST[k];h+='<button class="rest" style="background:'+r.cor+'" onclick="escolher(\''+k+'\')">'+esc(r.nome)+'<small>'+esc(r.desc)+'</small></button>'});
+  h+='<div class="peq">Você entra uma vez só, com o seu WhatsApp, e vale para os dois.</div>'+vInstalar()+'<div class="peq" style="text-align:center;margin-top:18px">versão '+VERSAO+'</div></div>';
+  return h;
+}
+function vHome(){
+  var r=REST[S.slug],H=HORA||{abre:"",fecha:"",entrega:""};
+  var h='<header><span>'+esc(r.nome)+'</span><span><small>'+(ABERTO?"Aberto para pedidos":"Fechado")+'</small> <button onclick="trocarRest()">trocar</button></span></header><div class="pad">';
+  if(ABERTO){
+    h+='<h2>Como quer receber?</h2>';
+    if(ENTREGA_OK)h+='<button class="btn" onclick="escolherModo(\'Entrega\')">🛵 Entrega</button>';
+    h+='<button class="btn" onclick="escolherModo(\'Retirada\')">🏪 Retirada</button>';
+    if(HORA&&HORA.entrega)h+='<div class="peq">'+(ENTREGA_OK?'Entrega até as '+HORA.entrega+'. Depois disso, só retirada.':'Depois das '+HORA.entrega+' o pedido é só para retirada.')+'</div>';
+  }else{
+    var a=agoraTxt(),qdo='Hoje os pedidos pelo app são feitos das '+H.abre+' às '+H.fecha+'.';
+    if(CARD&&CARD.dia_aberto===false)h+='<h2>Hoje não estamos recebendo pedidos</h2><p>Volte no próximo dia de funcionamento.</p>';
+    else if(a<H.abre)h+='<h2>Ainda não estamos recebendo pedidos</h2><p>'+qdo+'</p>';
+    else h+='<h2>Pedidos encerrados por hoje</h2><p>'+qdo+'</p>';
+    h+='<button class="btn sec" onclick="ir(\'pedidos\')">Ver meus pedidos</button>';
+  }
+  return h+vInstalar()+'<div class="peq" style="text-align:center;margin-top:18px">versão '+VERSAO+'</div></div>';
+}
+function escolherModo(m){S.modo=m;track("modo",{modo:m});salvar();ir("menu")}
+function abas(){
+  var a=gruposVisiveis().map(function(g){return{id:g.categoria,nome:nomeCat(g.categoria)}});
+  if(CARD.quilo)a.splice(Math.min(1,a.length),0,{id:"__quilo",nome:"Por quilo"});
+  return a;
+}
+function vMenu(){
+  var h='<header>Cardápio<small>'+esc(S.modo||"")+'</small></header><div class="tabs">';
+  abas().forEach(function(g){h+='<button class="'+(g.id===S.grupo?"on":"")+'" onclick="S.grupo=\''+g.id+'\';render()">'+esc(g.nome)+'</button>'});
+  h+='</div>';
+  if(S.grupo==="__quilo"){
+    h+='<div class="aviso" style="background:#e8f1ff;color:#0b4ea2">Comida por quilo: o valor é definido na pesagem (hoje o kg está '+brl(CARD.quilo.preco_kg)+'). Você recebe o valor no WhatsApp.</div>'+
+       '<div class="item" onclick="abrirQuilo()"><span>Comida por quilo<small style="display:block;font-size:12px;color:#777;font-weight:400">Marque o que quer do buffet de hoje</small></span><span class="p ac">valor na pesagem</span></div>';
+    return h;
+  }
+  var g=grupoPorCat(S.grupo)||gruposVisiveis()[0];
+  if(!g)return h+'<div class="pad">Nenhum item disponível agora.</div>';
+  g.itens.forEach(function(i){
+    h+='<div class="item" onclick="abrirItem(\''+js(i.chave)+'\')"><span>'+esc(i.nome)+'</span><span class="p">'+brl(i.preco)+'</span></div>';
+  });
+  return h;
+}
+function temBuffet(){return CARD&&CARD.cardapio_dia&&CARD.cardapio_dia.itens&&CARD.cardapio_dia.itens.length}
+function abrirItem(chave){
+  var it=itemPor(chave);if(!it)return;
+  var g=gruposVisiveis().filter(function(x){return x.itens.indexOf(it)>=0})[0];
+  S.sheet={chave:chave,item:it,quilo:false,qtd:1,obs:"",marcados:[],buffet:(g&&g.categoria==="TAMANHO"&&temBuffet())};render();
+}
+function abrirQuilo(){S.sheet={chave:"quilo",item:{nome:"Comida por quilo",preco:null},quilo:true,qtd:1,obs:"",marcados:[],buffet:!!temBuffet()};render()}
+function vSheet(){
+  var s=S.sheet,h='<div class="sheetbg"><div class="sheet"><h2>'+esc(s.item.nome)+'</h2>';
+  if(s.buffet){
+    h+='<div class="peq">Buffet de hoje — marque o que quer '+(s.quilo?'':'(opcional) ')+':</div>';
+    CARD.cardapio_dia.itens.forEach(function(b){h+='<label class="ck"><input type="checkbox" '+(s.marcados.indexOf(b.id)>=0?"checked":"")+' onchange="marcar('+b.id+')"> '+esc(b.nome)+'</label>'});
+  }
+  if(!s.quilo)h+='<div class="qty"><button onclick="mudaQtd(-1)">−</button><span>'+s.qtd+'</span><button onclick="mudaQtd(1)">+</button></div>';
+  h+='<textarea id="obs" rows="2" placeholder="Observação (opcional)" oninput="S.sheet.obs=this.value">'+esc(s.obs)+'</textarea>';
+  var sub=s.quilo?"valor na pesagem":brl(s.item.preco*s.qtd);
+  h+='<button class="btn" onclick="inserir()">Inserir no carrinho — '+sub+'</button><button class="btn sec" onclick="S.sheet=null;render()">Cancelar</button></div></div>';
+  return h;
+}
+function marcar(id){var m=S.sheet.marcados,k=m.indexOf(id);if(k>=0)m.splice(k,1);else m.push(id)}
+function mudaQtd(d){S.sheet.qtd=Math.max(1,S.sheet.qtd+d);render()}
+function nomesMarcados(ids){var r=[];(CARD.cardapio_dia?CARD.cardapio_dia.itens:[]).forEach(function(b){if(ids.indexOf(b.id)>=0)r.push(b.nome)});return r}
+function inserir(){
+  var s=S.sheet;
+  if(s.quilo&&s.buffet&&s.marcados.length===0){alert("Marque pelo menos um item do buffet.");return}
+  S.cart.push({chave:s.chave,nome:s.item.nome,preco:s.item.preco,qtd:s.quilo?1:s.qtd,obs:s.obs.trim(),marcados:s.marcados.slice(),quilo:!!s.quilo});
+  track("item_add",{nome:s.item.nome,quilo:!!s.quilo});S.sheet=null;salvar();render();
+}
+function vCart(){
+  var h='<header>Carrinho<small>'+esc(S.modo||"")+'</small></header><div class="pad">';
+  if(!S.cart.length)return h+'<p>Seu carrinho está vazio.</p><button class="btn sec" onclick="ir(\''+(ABERTO?'menu':'home')+'\')">Ver o cardápio</button></div>';
+  S.cart.forEach(function(l,k){
+    var nm=nomesMarcados(l.marcados);
+    h+='<div class="box"><b>'+esc(l.nome)+'</b>'+(nm.length?'<div class="peq">'+esc(nm.join(", "))+'</div>':'')+(l.obs?'<div class="peq">Obs: '+esc(l.obs)+'</div>':'')+
+    (l.quilo?'<div class="linha"><button class="rm" onclick="cartQtd('+k+',-1)">Remover</button><span style="font-size:15px">valor na pesagem</span></div></div>'
+      :'<div class="qty"><button onclick="cartQtd('+k+',-1)">−</button><span>'+l.qtd+'</span><button onclick="cartQtd('+k+',1)">+</button><span style="margin-left:auto;font-size:15px">'+brl(l.preco*l.qtd)+'</span></div></div>');
+  });
+  var beb=grupoPorCat("BEBIDA");
+  if(beb){h+='<div class="peq">Quer adicionar alguma bebida?</div>';beb.itens.forEach(function(b){h+='<span class="chip" onclick="addBebida(\''+js(b.chave)+'\')">+ '+esc(b.nome)+' '+brl(b.preco)+'</span>'})}
+  h+='<div class="box"><b>🍴 Talheres</b> <span class="peq">'+brl(PRECO_TALHER)+' cada</span><div class="qty"><button onclick="talher(-1)">−</button><span>'+(S.talh||0)+'</span><button onclick="talher(1)">+</button><span style="margin-left:auto;font-size:15px">'+(S.talh>0?brl(valTalh()):"não preciso")+'</span></div></div>';
+  var t=totais();
+  h+='<div class="linha tot"><span>Subtotal</span><span>'+brl(t.sub)+'</span></div>'+(t.pend?'<div class="peq">Mais o valor da comida por quilo, definido na pesagem.</div>':'');
+  return h+'<button class="btn" onclick="ir(\'checkout\')">Fechar pedido</button><button class="btn sec" onclick="ir(\'menu\')">Adicionar mais itens</button></div>';
+}
+function talher(d){S.talh=Math.max(0,Math.min(20,(S.talh||0)+d));salvar();render()}
+function cartQtd(k,d){S.cart[k].qtd+=d;if(S.cart[k].qtd<1||S.cart[k].quilo&&d<0)S.cart.splice(k,1);salvar();render()}
+function addBebida(chave){var b=itemPor(chave);if(!b)return;var ex=S.cart.filter(function(l){return l.chave===chave&&!l.obs})[0];if(ex)ex.qtd++;else S.cart.push({chave:chave,nome:b.nome,preco:b.preco,qtd:1,obs:"",marcados:[],quilo:false});track("item_add",{nome:b.nome});salvar();render()}
+
+function vCheckout(){
+  var h='<header>Fechar pedido<small>'+esc(S.modo||"")+'</small></header><div class="pad">';
+  h+='<div class="box"><b>Seu pedido</b>';
+  S.cart.forEach(function(l){var nm=nomesMarcados(l.marcados);h+='<div class="linha"><span>'+l.qtd+'x '+esc(l.nome)+'</span><span>'+(l.quilo?'a pesar':brl(l.preco*l.qtd))+'</span></div>'+(nm.length?'<div class="peq">'+esc(nm.join(", "))+'</div>':'')+(l.obs?'<div class="peq">Obs: '+esc(l.obs)+'</div>':'')});
+  h+='<button class="rm" onclick="ir(\'cart\')">Alterar itens</button></div>';
+  if(S.modo==="Entrega"){
+    h+='<h2>Endereço</h2>';
+    S.enderecos.forEach(function(e,k){h+='<span class="chip" onclick="usaEnd('+k+')">'+esc(e.apelido||e.rua)+' <b onclick="event.stopPropagation();apagaEnd('+k+')" style="margin-left:6px">✕</b></span>'});
+    var porCid={},ordem=[];
+    locais().forEach(function(l){var c=l.cidade||"";if(!porCid[c]){porCid[c]=[];ordem.push(c)}porCid[c].push(l)});
+    h+='<select onchange="S.end.local=this.value;salvar();render()"><option value="">Escolha o local de entrega…</option>';
+    ordem.forEach(function(c){
+      var ops=porCid[c].map(function(l){return'<option value="'+l.id+'" '+(String(S.end.local)===String(l.id)?"selected":"")+'>'+esc(l.nome)+' — '+brl(l.taxa)+'</option>'}).join("");
+      h+=c?'<optgroup label="'+esc(c)+'">'+ops+'</optgroup>':ops;
+    });
+    h+='<option value="combinar" '+(S.end.local==="combinar"?"selected":"")+'>Outro local — frete a combinar</option></select>';
+    if(S.end.local==="combinar")h+='<div class="peq">Escreva a cidade ou o bairro no campo Complemento. Nós confirmamos o valor do frete com você no WhatsApp.</div>';
+    h+='<input placeholder="Rua" value="'+esc(S.end.rua)+'" oninput="S.end.rua=this.value;salvar()">'+
+    '<input placeholder="Número" value="'+esc(S.end.num)+'" oninput="S.end.num=this.value;salvar()">'+
+    '<input placeholder="Complemento (opcional)" value="'+esc(S.end.comp)+'" oninput="S.end.comp=this.value;salvar()">'+
+    '<input placeholder="Apelido deste endereço (casa, firma…) — opcional" value="'+esc(S.end.apelido)+'" oninput="S.end.apelido=this.value;salvar()">';
+  }
+  if(!S.nome)h+='<h2>Seu nome</h2><input placeholder="Como podemos te chamar?" value="'+esc(S.nomeDig)+'" oninput="S.nomeDig=this.value">';
+  h+=S.convenio?'<h2>Pagamento</h2><div class="peq">Seu pedido fica na conta do convênio.</div>':'<h2>Pagamento (na entrega/retirada)</h2>';
+  (S.convenio?["Convênio"]:["Pix","Cartão","Dinheiro"]).forEach(function(p){h+='<label class="ck"><input type="radio" name="pag" '+(S.pag===p?"checked":"")+' onchange="S.pag=\''+p+'\';salvar();render()"> '+p+'</label>'});
+  if(S.pag==="Pix"&&CARD.pix_chave)h+='<div class="peq">Chave Pix: <b>'+esc(CARD.pix_chave)+'</b></div>';
+  if(S.pag==="Dinheiro")h+='<input placeholder="Troco para quanto? (opcional)" value="'+esc(S.troco)+'" oninput="S.troco=this.value;salvar()">';
+  var t=totais();
+  h+='<div class="box"><div class="linha"><span>Itens'+(S.talh>0?' + talheres':'')+'</span><span>'+brl(t.sub)+'</span></div>'+(S.modo==="Entrega"?'<div class="linha"><span>Taxa de entrega</span><span>'+(combinar()?"a combinar":brl(t.taxa))+'</span></div>':'')+
+  '<div class="linha tot"><span>Total</span><span>'+brl(t.total)+(combinar()?' + frete':'')+'</span></div>'+(t.pend?'<div class="peq">Mais o valor da comida por quilo, definido na pesagem. Você recebe o valor no WhatsApp.</div>':'')+'</div>';
+  return h+'<button class="btn" onclick="finalizar()">'+(S.enviando?"Enviando…":"Enviar pedido")+'</button><button class="btn sec" onclick="ir(\'menu\')">Voltar ao cardápio</button></div>';
+}
+function usaEnd(k){var e=S.enderecos[k];S.end={apelido:e.apelido||"",local:e.local_id?String(e.local_id):"",rua:e.rua||"",num:e.num||"",comp:e.comp||""};salvar();render()}
+function endParaBanco(e){return{apelido:String(e.apelido||(e.rua+" "+e.num)).trim().slice(0,40),local_id:(e.local&&e.local!=="combinar")?e.local:"",bairro:(localSel()||{}).nome||"",endereco:JSON.stringify({rua:e.rua||"",num:e.num||"",comp:e.comp||""})}}
+function endDoBanco(x){var o={rua:"",num:"",comp:""};try{o=JSON.parse(x.endereco)}catch(e){o.rua=String(x.endereco||"")}return{apelido:x.apelido||"",local_id:x.local_id||"",rua:o.rua||"",num:o.num||"",comp:o.comp||""}}
+function carregaEnderecos(){
+  var tk=token();if(!tk)return;
+  post("enderecos",{token:tk,acao:"listar"}).then(function(r){if(r&&r.ok&&Array.isArray(r.lista)){S.enderecos=r.lista.map(endDoBanco);S.convenio=r.convenio===true;if(S.convenio)S.pag="Convênio";else if(S.pag==="Convênio")S.pag="Pix";if(S.view==="checkout")render()}}).catch(function(){})}
+function apagaEnd(k){var e=S.enderecos[k];if(!e)return;S.enderecos.splice(k,1);render();post("enderecos",{token:token(),acao:"apagar",apelido:e.apelido}).catch(function(){})}
+function salvaEndBanco(){var tk=token();if(!tk)return;var b=endParaBanco(S.end);post("enderecos",{token:tk,acao:"salvar",apelido:b.apelido,local_id:b.local_id,bairro:b.bairro,endereco:b.endereco}).catch(function(){})}
+
+function msgErro(m){m=String(m||"");
+  if(m==="fechado")return"O restaurante não está recebendo pedidos agora.";
+  if(m==="entrega_encerrada")return"Depois das "+((HORA&&HORA.entrega)||"")+" só fazemos retirada. Volte e escolha Retirada.";
+  if(m.indexOf("indisponivel")===0)return"Um item do seu carrinho acabou ou saiu do cardápio. Volte ao cardápio e confira.";
+  if(m==="muitos_pedidos")return"Muitos pedidos seguidos. Chame o restaurante pelo WhatsApp.";
+  if(m==="endereco_incompleto")return"Preencha rua e número.";
+  if(m==="local_invalido")return"Escolha o local de entrega.";
+  return"Não consegui enviar o pedido. Tente de novo ou chame o restaurante pelo WhatsApp."}
+function finalizar(){
+  recalc();
+  if(S.modo==="Entrega"&&!ENTREGA_OK){alert("Depois das "+HORA.entrega+" só fazemos retirada. O pedido foi mudado para Retirada: confira e envie de novo.");render();return}
+  if(S.modo==="Entrega"){
+    if(!S.end.local){alert("Escolha o local de entrega.");return}
+    if(!S.end.rua.trim()||!S.end.num.trim()){alert("Preencha rua e número.");return}
+  }
+  if(S.enviando)return;
+  if(!token()){garanteSessao(function(ok){if(ok)finalizar()});return}
+  if(!S.nome&&!S.nomeDig.trim()){alert("Escreva o seu nome.");return}
+  if(!S.chave)S.chave=String(Date.now())+Math.random().toString(36).slice(2,8);
+  var t=totais();
+  var dados={chave:S.chave,nome:S.nome||S.nomeDig.trim(),modo:S.modo,pag:S.pag,troco:S.troco,talheres:S.talh,
+    itens:S.cart.map(function(l){return l.quilo?{k:"quilo",marcados:l.marcados,obs:l.obs}:{k:"item",chave:l.chave,qtd:l.qtd,obs:l.obs,marcados:l.marcados}})};
+  if(S.modo==="Entrega"){dados.end={rua:S.end.rua,num:S.end.num,comp:S.end.comp};if(S.end.local==="combinar")dados.combinar=true;else dados.local_id=Number(S.end.local)}
+  S.enviando=true;render();
+  post("pedido",{token:token(),dados:dados}).then(function(r){
+    S.enviando=false;
+    if(r&&r.ok){track("enviou",{numero:r.numero,modo:S.modo,pag:S.pag});if(!S.nome&&S.nomeDig){S.nome=S.nomeDig.trim();lsSet("pf_nome",S.nome)}S.chave=null;concluir(r.numero,t);return}
+    if(r&&r.motivo==="sessao_invalida"){delete TOK[S.slug];lsSet("pf_tok",JSON.stringify(TOK));S.loginPasso="tel";S.msg="Entre de novo com o seu telefone.";ir("login");return}
+    track("erro_pedido",{motivo:(r&&r.motivo)||"sem_resposta"});alert(msgErro(r&&r.motivo));render();
+  }).catch(function(){S.enviando=false;alert(msgErro());render()});
+}
+function concluir(num,t){
+  S.ultimo={numero:num,total:t.total,pend:t.pend,modo:S.modo,combinar:combinar()};
+  if(S.modo==="Entrega"&&S.end.local&&S.end.rua)salvaEndBanco();
+  S.cart=[];S.talh=0;salvar();ir("done");
+}
+/* ===== Login por código (uma vez) e troca de restaurante sem novo código ===== */
+function garanteSessao(cb){
+  if(token()){cb(true);return}
+  var outro=null;Object.keys(TOK).forEach(function(k){if(k!==S.slug&&TOK[k])outro=TOK[k]});
+  if(!outro){S.loginPasso="tel";S.msg="";S.volta=S.view==="pedidos"?"pedidos":"checkout";ir("login");return}
+  S.enviando=true;render();
+  post("trocar",{token:outro,slug:S.slug}).then(function(r){
+    S.enviando=false;
+    if(r&&r.ok&&r.token){setToken(S.slug,r.token);if(r.nome&&!S.nome){S.nome=r.nome;lsSet("pf_nome",S.nome)}track("trocou_restaurante");render();cb(true)}
+    else{S.loginPasso="tel";S.msg="";S.volta=S.view==="pedidos"?"pedidos":"checkout";ir("login")}
+  }).catch(function(){S.enviando=false;S.loginPasso="tel";S.msg="Sem conexão. Tente de novo.";ir("login")});
+}
+function sair(){TOK={};lsDel("pf_tok");S.nome="";S.meus=null;S.enderecos=[];S.convenio=false;lsDel("pf_nome");track("saiu");render()}
+function vLogin(){
+  var r=REST[S.slug];
+  var h='<header><span>Entrar</span><small>'+esc(r.curto)+'</small></header><div class="pad">';
+  if(S.msg)h+='<div class="aviso">'+esc(S.msg)+'</div>';
+  if(S.loginPasso==="tel"){
+    h+='<h2>Qual é o seu WhatsApp?</h2><p class="peq">Com DDD. Vamos mandar um código por lá para confirmar que o número é seu. Você só faz isso uma vez, e vale para o Familiar e o Esquinão.</p>'+
+    '<input type="tel" inputmode="tel" placeholder="(46) 99999-9999" value="'+esc(S.telDig)+'" oninput="S.telDig=this.value">'+
+    '<button class="btn" onclick="pedirCodigo()">'+(S.enviando?"Enviando…":"Receber código no WhatsApp")+'</button>';
+  }else{
+    h+='<h2>Digite o código</h2><p class="peq">Mandamos um código de 6 números para o seu WhatsApp ('+esc(S.telDig)+'). Vale 10 minutos.</p>'+
+    '<input type="tel" inputmode="numeric" maxlength="6" placeholder="000000" value="'+esc(S.codigoDig)+'" oninput="S.codigoDig=this.value">'+
+    '<button class="btn" onclick="entrar()">'+(S.enviando?"Conferindo…":"Entrar")+'</button>'+
+    '<button class="btn sec" onclick="S.loginPasso=\'tel\';S.msg=\'\';render()">Trocar o número</button>';
+  }
+  if(S.zapBtn)h+='<a class="btn" href="https://wa.me/'+r.zap+'?text='+encodeURIComponent("Oi! Quero fazer um pedido.")+'" onclick="track(\'clicou_zap\',{de:\'login\'})">Chamar o restaurante no WhatsApp</a>';
+  return h+'<button class="rm" onclick="ir(S.volta||\'checkout\')">Voltar</button></div>';
+}
+function pedirCodigo(){
+  if(S.enviando)return;S.enviando=true;S.msg="";render();
+  post("codigo",{slug:S.slug,tel:S.telDig}).then(function(r){S.enviando=false;
+    if(r&&r.ok){track("pediu_codigo");S.loginPasso="codigo";S.codigoDig="";S.zapBtn=false;lsSet("pf_tel",S.telDig)}
+    else S.msg=r&&r.motivo==="telefone_invalido"?"Confira o número, com DDD.":(r&&(r.motivo==="muitos_codigos"||r.motivo==="limite_geral")?"Muitos códigos pedidos. Tente de novo mais tarde ou chame o restaurante pelo WhatsApp.":"Não consegui mandar o código. Tente de novo.");
+    if(!(r&&r.ok))S.zapBtn=true;
+    render()}).catch(function(){S.enviando=false;S.msg="Sem conexão. Tente de novo.";render()});
+}
+function entrar(){
+  if(S.enviando)return;S.enviando=true;S.msg="";render();
+  post("entrar",{slug:S.slug,tel:S.telDig,codigo:S.codigoDig}).then(function(r){S.enviando=false;
+    if(r&&r.ok){setToken(S.slug,r.token);S.nome=r.nome||S.nome||"";if(S.nome)lsSet("pf_nome",S.nome);S.msg="";track("logou");var vv=S.volta||"checkout";S.volta="checkout";ir(vv);return}
+    S.msg=r&&r.motivo==="codigo_errado"?"Código errado. Confira e tente de novo.":(r&&r.motivo==="codigo_expirado"?"O código venceu ou errou 3 vezes. Peça um novo.":"Não consegui entrar. Tente de novo.");
+    if(r&&r.motivo==="codigo_expirado")S.loginPasso="tel";
+    render()}).catch(function(){S.enviando=false;S.msg="Sem conexão. Tente de novo.";render()});
+}
+function vDone(){
+  var p=S.ultimo;
+  return '<header>Pedido enviado ✅</header><div class="pad"><h2>Pedido #'+p.numero+' recebido</h2><p>Já está no sistema e na impressora da cozinha. Você vai receber uma cópia no WhatsApp.</p>'+
+  '<div class="box"><div class="linha tot" style="border:0;margin:0;padding:0"><span>Total</span><span>'+brl(p.total)+(p.pend?' + pesagem':'')+(p.combinar?' + frete':'')+'</span></div>'+(p.pend?'<div class="peq">O valor da comida por quilo sai na pesagem; avisamos no WhatsApp.</div>':'')+(p.combinar?'<div class="peq">O valor do frete combinamos com você no WhatsApp.</div>':'')+'</div>'+
+  '<button class="btn" onclick="ir(\'pedidos\')">Ver meus pedidos</button></div>';
+}
+/* ===== Meus pedidos ===== */
+function carregaMeus(){
+  var tk=token();if(!tk){S.meus=null;return}
+  S.meusCarregando=true;
+  post("meus-pedidos",{token:tk}).then(function(r){S.meusCarregando=false;S.meus=(r&&r.ok&&Array.isArray(r.lista))?r.lista:null;if(S.view==="pedidos")render()}).catch(function(){S.meusCarregando=false;S.meus=null;if(S.view==="pedidos")render()})}
+function quandoTxt(q){if(!q)return"";var d=new Date(q);if(isNaN(d))return"";function z(n){return(n<10?"0":"")+n}return z(d.getDate())+"/"+z(d.getMonth()+1)+"/"+d.getFullYear()+" às "+z(d.getHours())+":"+z(d.getMinutes())}
+var ST_TXT={RECEBIDO:"Recebido",EM_PREPARO:"Em preparo",ENTREGUE:"Entregue",CANCELADO:"Cancelado"};
+function mesmoDia(q){var d=new Date(q),n=new Date();return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&d.getDate()===n.getDate()}
+function vPedidos(){
+  var h='<header>Meus pedidos<small>'+esc((REST[S.slug]||{}).curto||"")+'</small></header><div class="pad">';
+  if(!token()){return h+'<div class="box"><b>Quer ver os seus pedidos?</b><div class="peq">Entre com o seu WhatsApp e o histórico aparece aqui, em qualquer aparelho.</div><button class="btn sec" onclick="garanteSessao(function(ok){if(ok){carregaMeus();render()}})">Entrar</button></div></div>'}
+  if(S.meusCarregando)return h+'<p class="peq">Buscando os seus pedidos…</p></div>';
+  if(!S.meus)return h+'<p>Não consegui buscar os seus pedidos agora. Tente de novo mais tarde.</p><button class="btn sec" onclick="carregaMeus();render()">Tentar de novo</button></div>';
+  if(!S.meus.length)h+='<p>Você ainda não fez pedidos por aqui.</p>';
+  S.meus.forEach(function(p){
+    var st=p.status;if(st==="EM_PREPARO"&&!mesmoDia(p.quando))st="CONCLUIDO";
+    var txt=st==="CONCLUIDO"?"Concluído":(ST_TXT[st]||st);
+    h+='<div class="box"><b>Pedido'+(p.numero?' #'+p.numero:'')+'</b> <span class="chip'+(st==="ENTREGUE"||st==="CONCLUIDO"?" ok":"")+'">'+esc(txt)+'</span><div class="peq">'+quandoTxt(p.quando)+'</div><div class="peq">'+esc(p.modo==="ENTREGA"?"Entrega":"Retirada")+(p.pagamento?' • '+esc(p.pagamento):'')+'</div>';
+    (p.itens||[]).forEach(function(i){
+      var pes=i.a_pesar===true||i.sem_valor===true;
+      h+='<div class="linha"><span>'+(i.qtd||1)+'x '+esc(i.nome||"")+'</span><span>'+(pes?'a pesar':brl(Number(i.subtotal||0)))+'</span></div>';
+    });
+    if(p.modo==="ENTREGA"&&p.frete_a_combinar)h+='<div class="linha"><span>Taxa de entrega</span><span>a combinar</span></div>';
+    else if(p.modo==="ENTREGA"&&Number(p.taxa)>0)h+='<div class="linha"><span>Taxa de entrega</span><span>'+brl(Number(p.taxa))+'</span></div>';
+    h+='<div class="linha tot"><span>Total</span><span>'+brl(Number(p.total||0))+(p.a_pesar?' + pesagem':'')+(p.frete_a_combinar?' + frete':'')+'</span></div></div>';
+  });
+  return h+'</div>';
+}
+/* ===== Montagem ===== */
+function render(){
+  if(S.slug)recalc();
+  var h="",v=S.view;
+  if(v==="escolha"||!S.slug){h=vEscolha();v="escolha"}
+  else if(STATUS!=="ok"){
+    var r=REST[S.slug],m;
+    if(STATUS==="carregando")m='<h2>Carregando o cardápio…</h2><p>Só um instante.</p>';
+    else if(STATUS==="desligado")m='<h2>O pedido pelo app ainda não está disponível</h2><p>Chame o restaurante pelo WhatsApp que a gente anota o seu pedido.</p><a class="btn" href="https://wa.me/'+r.zap+'?text='+encodeURIComponent("Oi! Quero fazer um pedido.")+'">Chamar o restaurante no WhatsApp</a>';
+    else m='<h2>Não consegui abrir o cardápio 😕</h2><p>Chame o restaurante pelo WhatsApp que a gente anota o seu pedido.</p><a class="btn" onclick="track(\'clicou_zap\',{de:\'falha\'})" href="https://wa.me/'+r.zap+'?text='+encodeURIComponent("Oi! Não consegui usar o app de pedidos, quero fazer um pedido.")+'">Chamar o restaurante no WhatsApp</a><button class="btn sec" onclick="escolher(S.slug)">Tentar de novo</button>';
+    h='<header><span>'+esc(r.nome)+'</span><button onclick="trocarRest()">trocar</button></header><div class="pad">'+m+'</div>';
+    $("#app").innerHTML=h;$("#nav").innerHTML="";return;
+  }else{
+    if(!ABERTO&&(v==="menu"||v==="cart"||v==="checkout"))v="home";
+    if(v==="home")h=vHome();
+    else if(v==="menu")h=vMenu();
+    else if(v==="cart")h=vCart();
+    else if(v==="checkout")h=S.cart.length?vCheckout():vCart();
+    else if(v==="done")h=vDone();
+    else if(v==="pedidos")h=vPedidos();
+    else if(v==="login")h=vLogin();
+    if(token()&&S.telDig)h='<div class="logado"><span>📱 '+(S.nome?esc(S.nome.split(" ")[0])+' · ':'')+esc(telFmt(S.telDig))+'</span><button class="rm" onclick="sair()">Sair</button></div>'+h;
+  }
+  if(NOVA)h='<div class="aviso" style="background:#d1e7dd;color:#0f5132;cursor:pointer;font-size:14px;text-align:center" onclick="atualizaApp()"><b>🔄 Nova versão do app — toque aqui para atualizar</b></div>'+h;
+  var q=S.cart.reduce(function(a,l){return a+l.qtd},0);
+  if(v==="menu"&&q>0&&!S.sheet){var tb=totais();h+='<div class="barra" onclick="ir(\'checkout\')"><span>🛒 '+q+(q===1?" item":" itens")+'</span><b>Fechar pedido</b><span>'+brl(tb.sub)+(tb.pend?'<small>+ pesagem</small>':'')+'</span></div>'}
+  if(S.sheet)h+=vSheet();
+  $("#app").innerHTML=h;
+  if(v==="escolha"){$("#nav").innerHTML="";return}
+  var tabs=[["home","Início"],["cart","Carrinho"+(q?" ("+q+")":"")],["pedidos","Pedidos"]];
+  $("#nav").innerHTML=tabs.map(function(t){var on=(v===t[0])||(t[0]==="home"&&(v==="menu"))||(t[0]==="cart"&&v==="checkout")||(t[0]==="pedidos"&&v==="done");return '<button class="'+(on?"on":"")+'" onclick="ir(\''+t[0]+'\')">'+t[1]+'</button>'}).join("");
+}
+/* ===== Início: abre direto no último restaurante (ou ?r=esquinao); sem isso, mostra a escolha ===== */
+(function(){
+  var r=null;try{r=new URLSearchParams(location.search).get("r")}catch(e){}
+  if(!r)r=lsGet("pf_ultimo","");
+  if(r&&REST[r])escolher(r);else render();
+})();
+if("serviceWorker" in navigator&&location.protocol==="https:"){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}
+</script>
+</body>
+</html>
