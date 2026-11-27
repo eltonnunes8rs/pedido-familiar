@@ -67,7 +67,7 @@
 <nav id="nav"></nav>
 <script>
 /* ===== Configuração ===== */
-var VERSAO="2026-11-23.3";   // MUDAR a cada publicação: é isso que faz o app instalado avisar
+var VERSAO="2026-11-27.1";   // MUDAR a cada publicação: é isso que faz o app instalado avisar
 var BASE="https://boldsquid-n8n.cloudfy.live/webhook/app-pedidos/";
 var REST={
   familiar:{nome:"Restaurante Familiar",curto:"Familiar",cor:"#7a1f3d",claro:"#f6e6eb",logo:"logo-familiar.png",desc:"Almoço: marmitas e comida por quilo",zap:"554699877721"},
@@ -159,7 +159,7 @@ function vInstalar(){
 
 /* ===== Escolha do restaurante e cardápio ===== */
 function escolher(slug){
-  S.slug=slug;S.view="home";S.sheet=null;S.meus=null;CARD=null;HORA=null;
+  S.slug=slug;S.view="home";S.sheet=null;S.meus=null;CARD=null;HORA=null;adReset();
   carregaCarrinho();lsSet("pf_ultimo",slug);tema();
   STATUS=/[?&]falha/.test(location.search)?"falha":"carregando";render();
   if(STATUS==="falha"){track("falha_cardapio");return}
@@ -172,14 +172,15 @@ function escolher(slug){
     AGORA0=minTxt(String(d.agora||"").slice(11,16));T0=Date.now();
     if(d.preco_talher!=null&&!isNaN(Number(d.preco_talher)))PRECO_TALHER=Number(d.preco_talher);
     S.grupo=(abas()[0]||{}).id||null;
-    STATUS="ok";track("abriu",{aberto:true,logado:!!token()});render();
+    STATUS="ok";track("abriu",{aberto:true,logado:!!token()});render();checaAdmin();
   }).catch(function(e){console.log("API falhou",e);if(S.slug===meu){STATUS="falha";track("falha_cardapio");render()}});
 }
-function trocarRest(){S.slug=null;S.view="escolha";STATUS="escolha";tema();render();window.scrollTo(0,0)}
+function trocarRest(){adReset();S.slug=null;S.view="escolha";STATUS="escolha";tema();render();window.scrollTo(0,0)}
 function ir(v){
   if(v==="checkout"&&S.view!=="checkout")track("fechar",{itens:S.cart.length});
   S.view=v;
   if(v==="pedidos")carregaMeus();
+  if(v==="admin"&&S.admin){S.ad.msg="";S.ad.erro="";if(S.slug==="familiar"&&S.ad.sub==="cardapio"&&!S.ad.cardapio)adCarrega(hojeBR());else if(!S.ad.cats)adItens()}
   if(v==="checkout")carregaEnderecos();
   render();window.scrollTo(0,0)}
 
@@ -366,7 +367,7 @@ function garanteSessao(cb){
     else{S.loginPasso="tel";S.msg="";S.volta=S.view==="pedidos"?"pedidos":"checkout";ir("login")}
   }).catch(function(){S.enviando=false;S.loginPasso="tel";S.msg="Sem conexão. Tente de novo.";ir("login")});
 }
-function sair(){TOK={};lsDel("pf_tok");S.nome="";S.meus=null;S.enderecos=[];S.convenio=false;lsDel("pf_nome");track("saiu");render()}
+function sair(){adReset();TOK={};lsDel("pf_tok");S.nome="";S.meus=null;S.enderecos=[];S.convenio=false;lsDel("pf_nome");track("saiu");render()}
 function vLogin(){
   var r=REST[S.slug];
   var h='<header><span>Entrar</span><small>'+esc(r.curto)+'</small></header><div class="pad">';
@@ -395,7 +396,7 @@ function pedirCodigo(){
 function entrar(){
   if(S.enviando)return;S.enviando=true;S.msg="";render();
   post("entrar",{slug:S.slug,tel:S.telDig,codigo:S.codigoDig}).then(function(r){S.enviando=false;
-    if(r&&r.ok){setToken(S.slug,r.token);S.nome=r.nome||S.nome||"";if(S.nome)lsSet("pf_nome",S.nome);S.msg="";track("logou");var vv=S.volta||"checkout";S.volta="checkout";ir(vv);return}
+    if(r&&r.ok){setToken(S.slug,r.token);S.nome=r.nome||S.nome||"";if(S.nome)lsSet("pf_nome",S.nome);S.msg="";track("logou");checaAdmin();var vv=S.volta||"checkout";S.volta="checkout";ir(vv);return}
     S.msg=r&&r.motivo==="codigo_errado"?"Código errado. Confira e tente de novo.":(r&&r.motivo==="codigo_expirado"?"O código venceu ou errou 3 vezes. Peça um novo.":"Não consegui entrar. Tente de novo.");
     if(r&&r.motivo==="codigo_expirado")S.loginPasso="tel";
     render()}).catch(function(){S.enviando=false;S.msg="Sem conexão. Tente de novo.";render()});
@@ -434,6 +435,115 @@ function vPedidos(){
   });
   return h+'</div>';
 }
+/* ===== ADMIN: aba Cardápio (só aparece para quem é ADMIN no banco) =====
+   Familiar: "Cardápio do dia" (marcar o buffet, salvar, copiar a mensagem) e "Itens e preços".
+   Esquinão: só "Itens e preços" (ligar/desligar item e mudar preço). O banco confere o ADMIN em cada chamada. */
+S.admin=false;S.ad={sub:"itens",cats:null,itens:null,msg:"",erro:"",carregando:false,salvando:false,cardapio:null,aberta:""};
+function hojeBR(){var d=new Date(Date.now()-3*3600*1000);return d.toISOString().slice(0,10)}
+function somaDias(iso,n){var d=new Date(iso+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
+var DSEM=["domingo","segunda","terça","quarta","quinta","sexta","sábado"];
+function adReset(){S.admin=false;S.ad={sub:S.slug==="familiar"?"cardapio":"itens",cats:null,itens:null,msg:"",erro:"",carregando:false,salvando:false,cardapio:null,aberta:""}}
+function checaAdmin(){
+  var tk=token(),meu=S.slug;
+  if(!tk||/[?&](exemplo|falha)/.test(location.search)){S.admin=false;return}
+  post("admin-itens",{token:tk}).then(function(r){
+    if(S.slug!==meu)return;
+    if(r&&r.ok&&r.categorias){S.admin=true;S.ad.cats=r.categorias;if(S.view==="home"||S.view==="admin")render()}else{S.admin=false;render()}
+  }).catch(function(){S.admin=false})}
+function adSub(x){S.ad.sub=x;S.ad.msg="";S.ad.erro="";if(x==="cardapio"&&!S.ad.cardapio)adCarrega(hojeBR());if(x==="itens"&&!S.ad.cats)adItens();render()}
+function adItens(){
+  S.ad.carregando=true;render();
+  post("admin-itens",{token:token()}).then(function(r){S.ad.carregando=false;
+    if(r&&r.ok&&r.categorias)S.ad.cats=r.categorias;else S.ad.erro=(r&&r.erro==="sem_permissao")?"Sem permissão.":"Não consegui abrir os itens.";
+    render()}).catch(function(){S.ad.carregando=false;S.ad.erro="Não consegui falar com o servidor.";render()})}
+function adAbre(c){S.ad.aberta=(S.ad.aberta===c?"":c);render()}
+function adAchaItem(chave){var r=null;(S.ad.cats||[]).forEach(function(c){c.itens.forEach(function(i){if(i.chave===chave)r=i})});return r}
+function adItemSalva(chave,ativo,preco,ok){
+  S.ad.msg="";S.ad.erro="";
+  post("admin-item-salvar",{token:token(),chave:chave,ativo:ativo,preco:preco}).then(function(r){
+    if(r&&r.ok){var it=adAchaItem(chave);if(it){it.ativo=r.ativo;it.preco=r.preco}S.ad.msg="✅ "+r.nome+" salvo.";track("admin_item",{chave:chave})}
+    else{S.ad.erro=r&&r.erro==="preco_invalido"?"Preço inválido.":(r&&r.erro==="sem_permissao"?"Sem permissão.":"Não consegui salvar. Tente de novo.");if(ok)ok(false)}
+    render()}).catch(function(){S.ad.erro="Não consegui salvar. Tente de novo.";render()})}
+function adLiga(chave,v){adItemSalva(chave,!!v,null)}
+function adPreco(chave){
+  var e=document.getElementById("adp_"+chave.replace(/\W/g,"_"));if(!e)return;
+  var v=String(e.value||"").replace(",",".").trim();
+  if(!v||isNaN(Number(v))||Number(v)<=0){S.ad.erro="Digite um preço válido.";render();return}
+  adItemSalva(chave,null,Number(v))}
+function vAdItens(){
+  var a=S.ad,h="";
+  if(a.carregando||!a.cats)return '<p class="peq">Carregando…</p>';
+  a.cats.forEach(function(c){
+    var aberta=a.aberta===c.categoria;
+    h+='<div class="box" style="padding:0"><button class="rm" style="width:100%;text-align:left;padding:13px;font-size:15px" onclick="adAbre(\''+js(c.categoria)+'\')"><b>'+esc(nomeCat(c.categoria))+'</b> <span class="peq">('+c.itens.length+')'+(c.oculta?' · não aparece no app':'')+'</span> '+(aberta?'▲':'▼')+'</button>';
+    if(aberta){h+='<div style="padding:0 13px 10px">';
+      c.itens.forEach(function(i){
+        var id="adp_"+String(i.chave).replace(/\W/g,"_");
+        h+='<div style="padding:9px 0;border-top:1px solid #f0f0f0"><label class="ck" style="border:0;padding:0"><input type="checkbox" '+(i.ativo?"checked":"")+' onchange="adLiga(\''+js(i.chave)+'\',this.checked)"> <span'+(i.ativo?'':' style="color:#999;text-decoration:line-through"')+'>'+esc(i.nome)+'</span></label>'+
+          '<div style="display:flex;gap:6px;margin-top:6px;align-items:center"><span class="peq">R$</span><input id="'+id+'" inputmode="decimal" value="'+(i.preco==null?'':String(i.preco).replace(".",","))+'" style="width:90px;padding:7px;font-size:15px"><button class="btn sec" style="width:auto;margin:0;padding:7px 12px;font-size:14px" onclick="adPreco(\''+js(i.chave)+'\')">Salvar preço</button>'+(i.preco_sabado?'<span class="peq">sáb. '+brl(Number(i.preco_sabado))+'</span>':'')+'</div></div>'});
+      h+='</div>'}
+    h+='</div>'});
+  return h+'<div class="peq">Desmarcar tira o item do app e do robô (acabou). Marcar de novo traz de volta. Item novo: use o comando <b>cadastrar</b> no WhatsApp.</div>'}
+function adCarrega(data,copiar){
+  S.ad.carregando=true;S.ad.msg="";S.ad.erro="";render();
+  var b={token:token(),data:data||hojeBR()};if(copiar)b.copiar_de=copiar;
+  post("admin-cardapio",b).then(function(r){S.ad.carregando=false;
+    if(r&&r.ok&&r.secoes){var s=r.secoes[0];s.itens.forEach(function(i){});S.ad.cardapio={data:r.data,dow:r.dow,salvo:r.salvo,copiado:r.copiado_de||"",itens:s.itens,mensagem:r.mensagem||""};adOrdena()}
+    else S.ad.erro=(r&&r.erro==="sem_permissao")?"Sem permissão.":"Não consegui abrir o cardápio do dia.";
+    render()}).catch(function(){S.ad.carregando=false;S.ad.erro="Não consegui falar com o servidor.";render()})}
+function adOrdena(){S.ad.cardapio.itens.sort(function(x,y){return String(x.nome).localeCompare(String(y.nome),"pt-BR",{sensitivity:"base"})})}
+function adTog(ii,v){S.ad.cardapio.itens[ii].marcado=!!v;var n=S.ad.cardapio.itens.filter(function(i){return i.marcado}).length;var e=document.getElementById("adn");if(e)e.textContent=n}
+function adNorm(s){return String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9 ]/g,"").replace(/\s+/g," ").trim()}
+function adNovo(){
+  var inp=document.getElementById("adnv"),nome=(inp.value||"").replace(/\s+/g," ").trim();if(!nome)return;
+  var c=S.ad.cardapio,n=adNorm(nome),ex=c.itens.filter(function(i){return adNorm(i.nome)===n});
+  if(ex.length){ex[0].marcado=true;inp.value="";render();return}
+  var sim=c.itens.filter(function(i){var m=adNorm(i.nome);return m.indexOf(n)>=0||n.indexOf(m)>=0});
+  if(sim.length&&!confirm('Já existe "'+sim[0].nome+'". Criar "'+nome+'" como item novo mesmo assim?'))return;
+  c.itens.push({id:null,nome:nome,marcado:true,novo:true});adOrdena();inp.value="";render()}
+function adSalvar(){
+  var a=S.ad,c=a.cardapio;if(a.salvando)return;
+  var itens=c.itens.filter(function(i){return i.marcado}).map(function(i){var o={obs:i.obs||null};if(i.id)o.id=i.id;else o.nome=i.nome;return o});
+  if(!itens.length){a.erro="Marque pelo menos um item.";render();return}
+  a.salvando=true;a.erro="";a.msg="";render();
+  post("admin-cardapio-salvar",{token:token(),data:c.data,itens:itens}).then(function(r){a.salvando=false;
+    if(r&&r.ok){a.msg="✅ Cardápio salvo ("+r.itens+" itens).";track("admin_cardapio",{itens:r.itens});adCarrega(c.data)}
+    else{a.erro=(r&&r.erro==="sem_permissao")?"Sem permissão.":"Não consegui salvar. Tente de novo.";render()}
+  }).catch(function(){a.salvando=false;a.erro="Não consegui salvar. Tente de novo.";render()})}
+function adCopia(){
+  var t=S.ad.cardapio.mensagem||"";
+  function ok(){S.ad.msg="📋 Mensagem copiada. Cole no grupo do WhatsApp.";render()}
+  try{navigator.clipboard.writeText(t).then(ok).catch(adSel)}catch(e){adSel()}}
+function adSel(){var e=document.getElementById("admsg");if(e){e.focus();e.select();S.ad.msg="Selecione e copie o texto."}}
+function vAdCardapio(){
+  var a=S.ad,c=a.cardapio,h="";
+  if(a.carregando||!c)return '<p class="peq">Carregando…</p>';
+  var d=c.data,dw=DSEM[c.dow],n=c.itens.filter(function(i){return i.marcado}).length;
+  h+='<div class="peq">Data: <input type="date" value="'+esc(d)+'" onchange="adCarrega(this.value)"> · '+esc(dw)+(c.salvo?' · <b>já lançado</b>':'')+'</div>';
+  h+='<div style="margin:8px 0"><button class="btn sec" style="display:inline-block;width:auto;margin:0 4px 4px 0;padding:6px 10px;font-size:13px" onclick="adCarrega(\''+d+'\',\''+somaDias(d,-1)+'\')">Copiar de ontem</button><button class="btn sec" style="display:inline-block;width:auto;margin:0 0 4px;padding:6px 10px;font-size:13px" onclick="adCarrega(\''+d+'\',\''+somaDias(d,-7)+'\')">Mesmo dia da semana passada</button></div>';
+  if(!c.salvo&&!c.copiado)h+='<div class="peq">Itens que sempre têm e os típicos de '+esc(dw)+' já vêm marcados. Confira e ajuste.</div>';
+  if(c.copiado)h+='<div class="peq">Marcado com base em '+esc(c.copiado.split("-").reverse().join("/"))+'.</div>';
+  h+='<h2 style="margin-top:12px">Buffet (<span id="adn">'+n+'</span>)</h2>';
+  c.itens.forEach(function(i,ii){
+    var dica="";
+    if(!i.marcado||!c.salvo){
+      if(i.freq_dia!=null&&i.freq_dia>=50&&i.motivo!=="dia"&&!i.marcado)dica="costuma ter às "+dw+"s";
+      else if(!i.marcado&&i.visto)dica="visto em "+String(i.visto).slice(5).split("-").reverse().join("/")}
+    h+='<label class="ck"><input type="checkbox" '+(i.marcado?"checked":"")+' onchange="adTog('+ii+',this.checked)"> '+esc(i.nome)+(i.novo?' <small>(novo)</small>':'')+(i.acabou?' <small>(acabou)</small>':'')+(dica?' <small style="color:#777">· '+esc(dica)+'</small>':'')+'</label>'});
+  h+='<div style="margin-top:8px"><input id="adnv" placeholder="+ novo item" style="padding:8px;width:60%;font-size:15px"> <button class="btn sec" style="display:inline-block;width:auto;margin:0;padding:8px 12px;font-size:14px" onclick="adNovo()">Adicionar</button></div>';
+  h+='<button class="btn" onclick="adSalvar()">'+(a.salvando?"Salvando…":(c.salvo?"Salvar alterações":"Salvar cardápio"))+'</button>';
+  if(c.mensagem)h+='<h2>Mensagem do WhatsApp</h2><textarea id="admsg" readonly style="width:100%;height:320px;font-size:14px">'+esc(c.mensagem)+'</textarea><button class="btn sec" onclick="adCopia()">Copiar mensagem</button>';
+  else h+='<div class="peq">Depois de salvar, a mensagem aparece aqui para copiar.</div>';
+  return h}
+function vAdmin(){
+  var a=S.ad,r=REST[S.slug]||{};
+  var h='<header>Cardápio<small>'+esc(r.curto||"")+'</small></header><div class="pad">';
+  if(S.slug==="familiar")h+='<div style="display:flex;gap:6px;margin-bottom:10px"><button class="btn'+(a.sub==="cardapio"?'':' sec')+'" style="margin:0;padding:10px;font-size:15px" onclick="adSub(\'cardapio\')">Cardápio do dia</button><button class="btn'+(a.sub==="itens"?'':' sec')+'" style="margin:0;padding:10px;font-size:15px" onclick="adSub(\'itens\')">Itens e preços</button></div>';
+  else h+='<h2>Itens e preços</h2>';
+  if(a.erro)h+='<div class="aviso">'+esc(a.erro)+'</div>';
+  if(a.msg)h+='<div class="aviso" style="background:#d1e7dd;color:#0f5132">'+esc(a.msg)+'</div>';
+  h+=(S.slug==="familiar"&&a.sub==="cardapio")?vAdCardapio():vAdItens();
+  return h+'</div>'}
 /* ===== Montagem ===== */
 function render(){
   if(S.slug)recalc();
@@ -448,6 +558,7 @@ function render(){
     $("#app").innerHTML=h;$("#nav").innerHTML="";return;
   }else{
     if(!ABERTO&&(v==="menu"||v==="cart"||v==="checkout"))v="home";
+    if(v==="admin"&&!S.admin)v="home";
     if(v==="home")h=vHome();
     else if(v==="menu")h=vMenu();
     else if(v==="cart")h=vCart();
@@ -455,6 +566,7 @@ function render(){
     else if(v==="done")h=vDone();
     else if(v==="pedidos")h=vPedidos();
     else if(v==="login")h=vLogin();
+    else if(v==="admin"&&S.admin)h=vAdmin();
     if(token()&&S.telDig)h='<div class="logado"><span>📱 '+(S.nome?esc(S.nome.split(" ")[0])+' · ':'')+esc(telFmt(S.telDig))+'</span><button class="rm" onclick="sair()">Sair</button></div>'+h;
   }
   if(NOVA)h='<div class="aviso" style="background:#d1e7dd;color:#0f5132;cursor:pointer;font-size:14px;text-align:center" onclick="atualizaApp()"><b>🔄 Nova versão do app — toque aqui para atualizar</b></div>'+h;
@@ -463,7 +575,7 @@ function render(){
   if(S.sheet)h+=vSheet();
   $("#app").innerHTML=h;
   if(v==="escolha"){$("#nav").innerHTML="";return}
-  var tabs=[["home","Início"],["cart","Carrinho"+(q?" ("+q+")":"")],["pedidos","Pedidos"]];
+  var tabs=[["home","Início"],["cart","Carrinho"+(q?" ("+q+")":"")],["pedidos","Pedidos"]];if(S.admin)tabs.push(["admin","Cardápio"]);
   $("#nav").innerHTML=tabs.map(function(t){var on=(v===t[0])||(t[0]==="home"&&(v==="menu"))||(t[0]==="cart"&&v==="checkout")||(t[0]==="pedidos"&&v==="done");return '<button class="'+(on?"on":"")+'" onclick="ir(\''+t[0]+'\')">'+t[1]+'</button>'}).join("");
 }
 /* ===== Início: abre direto no último restaurante (ou ?r=esquinao); sem isso, mostra a escolha ===== */
